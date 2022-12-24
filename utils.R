@@ -1,6 +1,7 @@
 suppressPackageStartupMessages({
   library(magrittr)
   library(tidyverse)
+  library(tidytext)
   library(lubridate)
   library(pins)
   library(janitor)

@@ -2,4 +2,5 @@
 !utils.R
 !data-upload.R
 !data-setup.R
+!01-extract_nonenglish.R
 .Rproj.user

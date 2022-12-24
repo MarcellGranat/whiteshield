@@ -3,4 +3,5 @@
 !data-upload.R
 !data-setup.R
 !01-extract_nonenglish.R
+!02-translate.py
 .Rproj.user

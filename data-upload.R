@@ -14,5 +14,3 @@ board <- board_ms365(
 pin_write(board, ilo_stat_df, name = "ilo_stat_df", description = "Source: Enclosed file")
 pin_write(board, job_post_data_df, name = "job_post_data_df", description = "Source: Enclosed file")
 pin_write(board, unemployed_df, name = "unemployed_df", description = "Source: Enclosed file")
-
-odb$get_item("whiteshield")$create_share_link("edit", expiry = "90 days")

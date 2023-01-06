@@ -21,3 +21,12 @@ theme_set(
       legend.position = "bottom"
     )
 )
+
+od <- Microsoft365R::get_business_onedrive(tenant = "common")
+# use `Microsoft365R::get_personal_onedrive()` 
+# if you want to access the data with it
+
+board <- board_ms365(
+  drive = od, 
+  path = "whiteshield"
+)

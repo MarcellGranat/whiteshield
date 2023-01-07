@@ -24,11 +24,8 @@ theme_set(
     )
 )
 
-od <- Microsoft365R::get_business_onedrive(tenant = "common")
-# use `Microsoft365R::get_personal_onedrive()` 
-# if you want to access the data with it
-
 board <- board_ms365(
-  drive = od, 
+  drive = Microsoft365R::get_business_onedrive(tenant = "common"), 
+  # use `Microsoft365R::get_personal_onedrive()` for non business account
   path = "whiteshield"
 )

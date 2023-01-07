@@ -11,6 +11,8 @@ suppressPackageStartupMessages({
   library(granatlib) # < github
   library(countrycode)
   library(patchwork)
+  library(sf)
+  library(reticulate)
   options(dplyr.summarise.inform = FALSE)
   options(todor_extra = c("qmd", "md", "txt", "r"))
 })

@@ -5,4 +5,6 @@
 !01-extract_nonenglish.R
 !02-translate.py
 !03-merge_translation.R
+!04-sbert.R
+!04-sbert.py
 .Rproj.user

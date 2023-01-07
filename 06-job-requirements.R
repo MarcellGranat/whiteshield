@@ -23,11 +23,14 @@ find_requirement <- function(x, example_lines = 1:3) {
     filter(str_detect(sentence, pattern_for_sentence)) |> 
     filter(str_detect(sentence, pattern))
   
-  examples <- detected |> 
-    slice(example_lines) |> 
-    pull(sentence)
   
-  examples_l <<- append(examples_l, list(pattern_for_sentence, pattern, examples))
+  examples_l[[length(examples_l) + 1]] <<- list(
+    pattern_for_sentence,
+    pattern, 
+    example = detected |> 
+      slice(example_lines) |> 
+      pull(sentence)
+  )
   
   detected |> 
     transmute(
@@ -40,9 +43,16 @@ find_requirement <- function(x, example_lines = 1:3) {
   
 }
 
+find_requirement(list("experience", "experience", "\\d{1,2}"))
+
+examples_l |> 
+  last() |> 
+  str_view_all(example$example, pattern = example[[2]])
+
+
 requirement_l <- list(
   list("experience", "experience", "\\d{1,2}"),
-  list("male", "only female", "female")
+  list("female", "only female", "female")
 ) |> 
   progress_map(find_requirement)
 

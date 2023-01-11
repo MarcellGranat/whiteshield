@@ -13,6 +13,7 @@ suppressPackageStartupMessages({
   library(patchwork)
   library(sf)
   library(reticulate)
+  library(stm)
   options(dplyr.summarise.inform = FALSE)
   options(todor_extra = c("qmd", "md", "txt", "r"))
 })

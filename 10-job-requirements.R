@@ -1,6 +1,5 @@
 job_post_translated <- pin_read(board, "job_post_translated")
 
-
 # Age minimum -------------------------------------------------
 
 age_minimum_df <- job_post_translated |> 
@@ -33,14 +32,14 @@ titles <- pin_read(board, "unemployed_df") |>
   pull(Education) |> 
   unique()
 
-job_post_translated %>% 
-  transmute(
+requirements_df <- job_post_translated |> 
+  mutate(
     line = row_number(),
     text = str_remove_all(JobDescription, "\\t|\\n")
   ) |> 
-  head(5) |> 
   left_join(age_minimum_df, by = "line") |> 
-  mutate(
+  splitted_transmute(split_number = 100,
+    line,
     experience_sent = str_extract(text, around("experience")),
     experience_min = map_dbl(experience_sent, function(sent) {
       num = str_extract_all(sent, pattern = "\\d{1,2}")[[1]]
@@ -53,6 +52,15 @@ job_post_translated %>%
     }
     ),
     experience_min = ifelse(experience_min > 30, NA, experience_min),
+    experience_min = case_when(
+      !is.na(experience_min) ~ as.numeric(experience_min),
+      Experience == "Internship" ~ 0,
+      Experience == "Entry level" ~ 2,
+      Experience == "Associate" ~ 5,
+      Experience == "Director" ~ 15,
+      Experience == "Executive" ~ 20,
+      TRUE ~ 0
+    ),
     degree = str_extract(text, "[ A-z]+ [A-z]+ degree [ A-z]+ "),
     degree_title = str_extract(
       degree, 
@@ -65,13 +73,28 @@ job_post_translated %>%
       str_detect(degree_title, paste(c("(?i)doctorate", "(?i)phd"), sep = "", collapse = "|")) ~ "Doctorate",
       TRUE ~ NA_character_
     ),
+    min_degree = ifelse(is.na(min_degree), Degree, min_degree),
+    min_degree = ifelse(min_degree == "NULL", NA, min_degree),
+    min_degree = factor(min_degree, levels = c("Diploma", "Bachelor", "Master", "Doctorate"), ordered = TRUE),
     degree_year = case_when(
       min_degree == "Diploma" ~ 2,
-      min_degree == "Bachelor" ~ 3, 
-      min_degree == "Master" ~ 5, 
+      min_degree == "Bachelor" ~ 3,
+      min_degree == "Master" ~ 5,
       min_degree == "Doctorate" ~ 8,
       TRUE ~ 0
+    ),
+    age_from_exp = 18 + experience_min + degree_year,
+    gender = case_when(
+      str_detect(text, "[Ff]emale") ~ "Female",
+      str_detect(text, "[ /][Mm]ale") ~ "Male",
+      TRUE ~ NA_character_
     )
+  )
+
+requirements_df |> 
+  pin_write(
+    board = board,
+    "Requirements for the job"
   )
 
 

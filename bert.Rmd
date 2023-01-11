@@ -1,0 +1,135 @@
+---
+title: "Untitled"
+author: "Balint Mazzag"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r}
+library(sf)
+library(tidyverse)
+library(janitor)
+library(tidytext)
+
+load("raw_data.RData")
+job_post_translated <- readRDS("data/job_post_translated.rds")
+bert_merged <- readRDS("data/bert_merged.rds")
+
+shape <- st_read("C:/Users/Knipping/Documents/Whiteshield/sau_adm_gadm_20210525_shp/sau_admbnda_adm1_gadm_20210525.shp") %>% 
+  mutate(
+         ADM1_EN = str_replace(ADM1_EN, "`Asir", "Aseer"),
+         ADM1_EN = str_replace(ADM1_EN, "Jawf", "Jowf"),
+         ADM1_EN = str_replace(ADM1_EN,  "Ar Riyad", "Riyadh"),
+         ADM1_EN = str_replace(ADM1_EN, "Jizan", "Jazan" ),
+         ADM1_EN = str_replace(ADM1_EN, "Ha'il", "Hail"),
+         ADM1_EN = str_replace(ADM1_EN,  "Al Quassim", "Al Qassim"),
+         ADM1_EN = str_replace(ADM1_EN, "Al Hudud ash Shamaliyah", "Northern Borders"),
+         ADM1_EN = str_replace(ADM1_EN, "Ash Sharqiyah", "Eastern"),
+         ADM1_EN = str_c(ADM1_EN, " Province"),
+  )
+
+centroids <- shape %>% 
+  mutate(
+    centroid = sf::st_centroid(geometry)
+  ) %>% select(ADM1_EN, centroid)
+
+st_distance <- st_distance(centroids$centroid, centroids$centroid) %>% 
+  `colnames<-`(shape$ADM1_EN) %>% 
+  as_tibble() %>% 
+  mutate(from = shape$ADM1_EN, .before = 1) %>% 
+  pivot_longer(-1, names_to = "to", values_to = "distance") %>% 
+  mutate(distance = as.numeric(distance))
+
+calculate_distance <- function(filter_from, filter_to){
+  if (filter_from %in% c("NULL", "Unspecified") | filter_to %in% c("NULL", "Unspecified")){
+    distance <- 0
+  } else {
+  distance <- st_distance %>% 
+    filter(from == filter_from, to = filter_to) %>% 
+    pull(distance)
+  }
+  return(distance)
+}
+
+```
+
+
+```{r}
+
+
+  job_post_translated %>% 
+  sample_n(1000) %>% 
+  transmute(text= str_remove_all(JobDescription, "\\t|\\n")) %>% 
+  # clipr::write_clip()
+  mutate(
+    male = str_detect(text, "[ /][Mm]ale"),
+    female = str_detect(text, "[Ff]emale"),
+    age_1 = str_extract(text, "[0-9]{2} years[ A-z]* age"),
+    age_2 = str_extract(text, "[0-9]{2} years old and below"),
+    age_5 = str_extract(text, "[Ll]ess than [0-9]{2} years"),
+    age_3 = str_extract(text, "[0-9]{2}[- A-z]+[0-9]{2} years old"),
+    age_4 = str_extract(text, " [Aa]ge[: ]+[A-z: ]*[0-9]{2}[- A-z]*[0-9]{2}"),
+    # experience = str_extract_all(text, "[0-9]+ years"),
+    # remote = str_extract(text, "[Rr]emote[ A-z]+"),
+    # graduate = str_detect(text, "[Mm]ust ."),
+    # must = str_extract(text, "[ A-z]+ certificate"),
+    degree = str_extract(text, "[ A-z]+ [A-z]+ degree [ A-z]+ ")
+  )
+  # filter(!is.na(must)|!is.na(degree))
+  # mutate(count = is.na(age_1) +is.na(age_2) + is.na(age_3) +is.na(age_4) +is.na(age_5)) %>% 
+  # filter(count != 5)
+
+```
+
+
+```{r}
+
+set.seed(1234)
+
+ilo_job_types <- unique(ilo_stat_df$ISCO3Label)
+
+post_ilo <- bert_merged %>% 
+  mutate(type = ilo_job_types, .before =1) %>% 
+  pivot_longer(-1) %>% 
+  group_by(name) %>%
+  slice_max(order_by = value, n = 1, with_ties = F) %>% 
+  # TODO if value is below 0.6 don't put it in, but can be categorized to 3 different high values
+  ungroup() %>% 
+  mutate(name = as.numeric(name))
+
+
+post_region <- job_post_translated %>% 
+  filter(!str_detect(str_sub(JobDescription, start = 3), "^[^a-zA-Z 0-9().,'-=!?:’%&]")) %>% 
+  mutate(name = row_number()-1,
+         male = str_detect(JobDescription, "[ /][Mm]ale"),
+         female = str_detect(JobDescription, "[Ff]emale"),
+         gender = case_when(
+           (male & !female) ~ "Male",
+           (!male & female) ~ "Female",
+           TRUE ~ "NA"
+         )) %>% 
+  left_join(post_ilo) %>% 
+  sample_n(10000) %>% 
+  select(-JobDescription)
+  
+unemp_region <- unemployed_df %>% 
+  filter(Status == 1,
+         !str_detect(MajorStudy, "[Aa]rmed forces")) %>% 
+  sample_n(200) %>% 
+  mutate(
+    proposal = 
+      pmap(
+        list(MajorStudy, Gender, Age, Education, Region),
+        function(a,b,c,d,e){
+          filter(post_region, 
+                 type == a, gender %in% c("NA", b)) %>% 
+            # mutate(dist = calculate_distance(filter_from = Region, filter_to = e)) %>% 
+            arrange(Region == e, -value) %>% mutate(rank = row_number())
+        }
+      )
+  )
+
+
+```
+

@@ -30,6 +30,12 @@ db_sentence <- pin_read(board, "bert_job_post") |>
   filter(str_count(sentence, " ") >= 2) |> 
   mutate(line = row_number(), .before = 1)
 
+board |> 
+  pin_write(
+    db_sentence,
+    "db_sentence"
+  )
+
 reticulate::source_python('07-best-skills.py')
 
 bert_skills <- py$bert_skills |> 

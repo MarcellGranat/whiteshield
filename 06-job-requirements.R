@@ -43,17 +43,22 @@ find_requirement <- function(x, example_lines = 1:3) {
   
 }
 
-find_requirement(list("experience", "experience", "\\d{1,2}"))
+requirement_l <- list(
+  list("experience", "experience", "\\d{1,2}"),
+  list("female", "only female", "female"),
+  list("male", ".", "[ /][Mm]ale"),
+  list("female", ".", "[Ff]emale"),
+  list("age", ".", "[0-9]{2} years[ A-z]* age"),
+  list("age", ".", "[0-9]{2} years old and below"),
+  list("age", ".", "[Ll]ess than [0-9]{2} years"),
+  list("age", ".", "[0-9]{2}[- A-z]+[0-9]{2} years old"),
+  list("age", ".", "[Aa]ge[: ]+[A-z: ]*[0-9]{2}[- A-z]*[0-9]{2}"),
+  list("degree", "." , "[ A-z]+ [A-z]+ degree [ A-z]+")
+) |> 
+  map(find_requirement)
 
 examples_l |> 
   last() |> 
   str_view_all(example$example, pattern = example[[2]])
-
-
-requirement_l <- list(
-  list("experience", "experience", "\\d{1,2}"),
-  list("female", "only female", "female")
-) |> 
-  progress_map(find_requirement)
 
 

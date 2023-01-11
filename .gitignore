@@ -11,5 +11,8 @@
 !10-job-requirements.R
 !07-bert-skills.R
 !07-best-skills.py
+!08-distance.R
+!09-skill-order.R
+!11-recommendation.R
 !stm.R
 .Rproj.user

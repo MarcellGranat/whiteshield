@@ -40,6 +40,7 @@ requirements_df <- job_post_translated |>
   left_join(age_minimum_df, by = "line") |> 
   splitted_transmute(split_number = 100,
     line,
+    age_min,
     experience_sent = str_extract(text, around("experience")),
     experience_min = map_dbl(experience_sent, function(sent) {
       num = str_extract_all(sent, pattern = "\\d{1,2}")[[1]]

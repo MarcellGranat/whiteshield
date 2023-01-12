@@ -31,6 +31,7 @@ supply_side_df <- bert_match_df |>
     req_Region = Region,
     req_min_degree = min_degree,
     req_age_from_exp = age_from_exp,
+    age_min,
     req_gender = gender
   )
 
@@ -51,8 +52,8 @@ job_to_unemployed <- function(x) {
     filter(
       (is.na(req_gender) | req_gender == Gender),
       (is.na(req_min_degree) | Education >= req_min_degree),
-      Age >= req_age_from_exp,
-      Age >= min_age
+      (is.na(age_min) | Age >= age_min),
+      Age >= req_age_from_exp, # NA coded as zero
     ) |> 
     left_join(distance_df, by = c("Region", "req_Region")) |> 
     arrange(distance, desc(similarity)) |> 

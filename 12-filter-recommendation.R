@@ -1,5 +1,5 @@
 library(furrr)
-plan(multisession(workers = 10))
+plan(multisession(workers = parallel::detectCores()))
 
 source("08-distance.R")
 

@@ -37,3 +37,20 @@ calculate_distance <- function(.from = "NULL", .to = "NULL"){
   distance
 }
 
+distance_df <- crossing(
+  pin_read(board, "unemployed_df") |> 
+    distinct(Region),
+  pin_read(board, "job_post_translated") |> 
+    distinct(Region) |> 
+    rename(req_Region = Region)
+) |> 
+  rowwise() |> 
+  mutate(distance = calculate_distance(Region, req_Region)) |> 
+  ungroup()
+
+board |> 
+  pin_write(
+    distance_df, 
+    "distance_df"
+  )
+

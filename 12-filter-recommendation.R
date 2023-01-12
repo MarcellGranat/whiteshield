@@ -1,14 +1,4 @@
 library(furrr)
-plan(multisession(workers = parallel::detectCores()))
-
-source("08-distance.R")
-
-bert_match_df <- pin_read(board, "BERT matching")
-
-job_ids <- pin_read(board, "job_post_translated") |> 
-  transmute(line = row_number(), Id, Region)
-
-requirements_df <- pin_read(board, "Requirements for the job")
 
 unemployed_df <- pin_read(board, "unemployed_df") |> 
   filter(Status == 1) |> 
@@ -21,9 +11,16 @@ unemployed_df <- pin_read(board, "unemployed_df") |>
     MajorStudy
   )
 
-supply_side_df <- bert_match_df |> 
-  left_join(job_ids, by = "Id") |> 
-  inner_join(requirements_df, by = "line") |> 
+distance_df <- pin_read(board, "distance_df")
+
+supply_side_df <- pin_read(board, "BERT matching") |> 
+  left_join(
+    pin_read(board, "job_post_translated") |> 
+      transmute(line = row_number(), Id, Region), 
+    by = "Id") |> 
+  left_join(
+    pin_read(board, "Requirements for the job"), 
+    by = "line") |> 
   select(
     job_id = Id,
     ISCO3Label, 
@@ -35,35 +32,32 @@ supply_side_df <- bert_match_df |>
     req_gender = gender
   )
 
-distance_df <- crossing(
-  unemployed_df |> 
-    distinct(Region),
-  supply_side_df |> 
-    distinct(req_Region)
-) |> 
-  rowwise() |> 
-  mutate(distance = calculate_distance(Region, req_Region)) |> 
-  ungroup()
-
 job_to_unemployed <- function(x) {
   unemployed_df |> 
     slice(x) |> 
     left_join(supply_side_df, by = c("MajorStudy" = "ISCO3Label")) |> 
     filter(
       (is.na(req_gender) | req_gender == Gender),
+      # no requirement or the potential applicant should pass
       (is.na(req_min_degree) | Education >= req_min_degree),
       (is.na(age_min) | Age >= age_min),
-      Age >= req_age_from_exp, # NA coded as zero
+      Age >= req_age_from_exp, # req age inference from the req experience
     ) |> 
     left_join(distance_df, by = c("Region", "req_Region")) |> 
     arrange(distance, desc(similarity)) |> 
-    slice(max(1, n()):min(10, n())) |> 
-    select(unemployed_id, job_id)
+    # as closest as possible or more similar or a more fitting job
+    slice(min(1, n()):min(10, n())) |> # best 10 maximum
+    select(unemployed_id, job_id) # save memory
 }
 
+plan(multisession(workers = min(parallel::detectCores(), 6)))
+
 tictoc::tic("filter-matching")
-filtered_match <- future_map_dfr(seq(nrow(unemployed_df)), job_to_unemployed, .progress = TRUE)
+filtered_match <- future_map(seq(nrow(unemployed_df)), job_to_unemployed, .progress = TRUE) |> 
+  bind_rows()
 stoc()
+
+plan("default")
 
 filtered_match |> 
   pin_write(
@@ -71,4 +65,3 @@ filtered_match |>
     "Filtered match"
   )
 
-plan("default")

@@ -14,5 +14,6 @@
 !08-distance.R
 !09-skill-order.R
 !11-recommendation.R
+!12-filter-recommendation.R
 !stm.R
 .Rproj.user

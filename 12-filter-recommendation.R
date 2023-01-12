@@ -51,7 +51,8 @@ job_to_unemployed <- function(x) {
     filter(
       (is.na(req_gender) | req_gender == Gender),
       (is.na(req_min_degree) | Education >= req_min_degree),
-      Age >= req_age_from_exp, # FIXME min_age
+      Age >= req_age_from_exp,
+      Age >= min_age
     ) |> 
     left_join(distance_df, by = c("Region", "req_Region")) |> 
     arrange(distance, desc(similarity)) |> 

@@ -27,14 +27,13 @@ st_distance <- st_distance(centroids$centroid, centroids$centroid) %>%
 
 calculate_distance <- function(.from = "NULL", .to = "NULL"){
   if (.from %in% c("NULL", "Unspecified") | .to %in% c("NULL", "Unspecified")){
-    distance <- NA # TODO NA
+    distance <- 1 # TODO NA?
   } else {
     distance <- st_distance %>% 
-      filter(from == .from, to = .to) %>% 
+      filter(from == .from, to == .to) %>% 
       pull(distance)
   }
   
   distance
 }
 
-calculate_distance()

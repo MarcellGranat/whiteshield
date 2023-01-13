@@ -1,4 +1,4 @@
-# whiteshield <img src="logo.png" align="right" width="120" height="140"/>
+# Whiteshield DataScience Competition <img src="logo.png" align="right" width="120" height="140"/>
 
 ### Files of the repository
 
@@ -21,10 +21,12 @@ As a first, we extracted the non-english sentences from the job posts and trasnl
     ├── 04-sbert.py
     ├── 05-bert_matching.R
     
+We used Bert model to sort the jobs into ISCO categories...
+
     ├── 07-bert-skills.R
     ├── 07-best-skills.py
     
-We used Bert model to sort the jobs into ISCO categories.
+... and to identify the skills
     
     ├── 08-distance.R
     

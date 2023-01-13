@@ -29,15 +29,17 @@ width: 80px;
 ```
 # Info {data-icon="fa-info-circle"}
 
-## Row {data-height="350"}
+## Row {data-height="400"}
 
 ### What is this project?
 
-The dashboard presents our solution to the WhiteShield Data Science competition, which includes the analysis of the skills required for the given job post pool. Our solution involves two methods to explain the necessary skills:
+The dashboard presents our solution to the Whiteshield Data Science competition, which includes the analysis of the skills required for the given job post pool. Our solution involves two methods to explain the necessary skills and one visuaisation of the skills gap:
 
-1.  Counting the number of posts that were matched with a given ISCO level code. This means, that on 3 levels we can explore the number of job posts in the dataset
+1.	Counting the **number of posts** that were matched with a given **ISCO level** code. This means, that on 3 levels we can explore the number of job posts in the dataset.
 
-2.  A Structured Topic Model was fitted tot he corpus of the job descriptions, which resulted in 10 topics, with differing keywords that are present in our dataset. The topics occurence however differs from ISCO2 level job types, therefore it can be tracked which jobs require which type of keywords and skills. The words associated with the topics and the frequency of topic occurrence can be found in the third page
+2.	A **Structural Topic Model** was fitted to the corpus of the job descriptions, which resulted in 10 topics, with **differing keywords** that are present in our dataset. The topics’ occurence however differs by ISCO2 level job types, therefore it can be tracked **which jobs require which type of keywords and skills**. The words associated with the topics and the frequency of topic occurrence can be found on the third page.
+
+3.	The **skills gap** was visualized as the difference between the ratio of ISCO3 level jobs **identified in the job post dataset** and the **ratio of unemployed people** studying in that major. Our graph shows the top 10 overdemanded and the top 10 oversupplied jobs on the Saudi labor market.
 
 GitHub Repository of the project: <https://github.com/MarcellGranat/whiteshield>
 

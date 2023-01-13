@@ -15,7 +15,7 @@ library(tidyverse)
 library(plotly)
 library(printr)
 
-knitr::opts_chunk$set(cache = TRUE)
+knitr::opts_chunk$set(cache = TRUE, dev = "svg")
 ```
 
 ```{=html}
@@ -27,22 +27,27 @@ width: 80px;
 }
 </style>
 ```
-
 # Info {data-icon="fa-info-circle"}
 
-Row {data-height=350}
--------------------------------------
+## Row {data-height="350"}
 
 ### What is this project?
 
 The dashboard presents our solution to the WhiteShield Data Science competition, which includes the analysis of the skills required for the given job post pool. Our solution involves two methods to explain the necessary skills:
 
-1. Counting the number of posts that were matched with a given ISCO level code. This means, that on 3 levels we can explore the number of job posts in the dataset
+1.  Counting the number of posts that were matched with a given ISCO level code. This means, that on 3 levels we can explore the number of job posts in the dataset
 
-2. A Structured Topic Model was fitted tot he corpus of the job descriptions, which resulted in 10 topics, with differing keywords that are present in our dataset. The topics occurence however differs from ISCO2 level job types, therefore it can be tracked which jobs require which type of keywords and skills. The words associated with the topics and the frequency of topic occurrence can be found in the third page
+2.  A Structured Topic Model was fitted tot he corpus of the job descriptions, which resulted in 10 topics, with differing keywords that are present in our dataset. The topics occurence however differs from ISCO2 level job types, therefore it can be tracked which jobs require which type of keywords and skills. The words associated with the topics and the frequency of topic occurrence can be found in the third page
 
-Row {data-height=600}
--------------------------------------
+GitHub Repository of the project: <https://github.com/MarcellGranat/whiteshield>
+
+**Find us:**
+
+-   <https://marcellgranat.com>
+
+-   <https://balintmazzag.netlify.app>
+
+## Row {data-height="600"}
 
 ### The authors
 
@@ -50,7 +55,7 @@ Row {data-height=600}
 knitr::include_graphics("avatars.png")
 ```
 
-# Most researched majors
+# Most researched majors {data-icon="fa-briefcase"}
 
 ## Most researched {.tabset}
 
@@ -81,17 +86,16 @@ slice_min_max <- function(df, order_by = value, n = 1) {
   
   min <- slice_min(df, !!order_by, n = n) %>%
     mutate(type = "min")
-
+  
   max <- slice_max(df, !!order_by, n = n) %>%
     mutate(type = "max")
-
+  
   df <- bind_rows(min, max) %>%
     as_tibble()
   
   return(df)
   
 }
-
 ```
 
 ```{r}
@@ -134,6 +138,7 @@ bert_matching |>
   left_join(isco_table, by = c("code" = "code")) |> 
   count(preferredLabel) |> 
   mutate(preferredLabel = as.character(preferredLabel)) |> 
+  drop_na() |> 
   ggplot(aes(area = n, fill = preferredLabel, label = str_wrap(preferredLabel, width = 20))) +
   geom_treemap(color = "black") +
   geom_treemap_text(grow = F, reflow = F, colour = "black") + 
@@ -142,7 +147,6 @@ bert_matching |>
     legend.position = "none"
   )
 ```
-
 
 ### ISCO 2
 
@@ -186,10 +190,9 @@ bert_matching |>
   )
 ```
 
-# Structural Topic Model
+# Structural Topic Model {data-icon="fa-file-word"}
 
 ## Structural Topic Model {.tabset}
-
 
 ### Topic extraction from the job post
 
@@ -197,7 +200,7 @@ bert_matching |>
 stm_effect_10 <- pin_read(board, "stm_effect_10")
 ```
 
-```{r}
+```{r fig.width=6}
 isco2_label <- pin_read(board, "bert_merged") |> 
   mutate(ilo_line = row_number(), .before = 1) |> 
   pivot_longer(
@@ -244,7 +247,7 @@ stm_effect_10 |>
   aes(topic, preferredLabel, fill = estimate) +
   geom_tile(color = "black") +
   geom_text(aes(x = 12, y = preferredLabel, label = p_label, color = ""), size = 2) +
-  scale_x_continuous(breaks = 1:10) +
+  scale_x_continuous(breaks = 1:10, limits = c(1, 13)) +
   scale_color_manual(values = c("#4a8179")) +
   guides(
     color = guide_legend(
@@ -259,7 +262,7 @@ stm_effect_10 |>
     )
   ) + 
   labs(
-    fill = "Estimated effect on topic prevalence",
+    fill = "Effect on topic prevalence",
     y = "ISCO 2",
     x = "Topic number",
     color = "Number of identified jobs      "
@@ -270,11 +273,10 @@ stm_effect_10 |>
     axis.title = element_text(size = 7),
     legend.box = "vertical",
     legend.key.height = unit(.2, "cm"),
-    legend.key.width = unit(2, "cm"),
+    legend.key.width = unit(.5, "cm"),
     legend.text = element_text(size = 6),
     legend.title = element_text(size = 7),
-  ) + 
-  xlim(c(1, 13))
+  )
 ```
 
 ### Words in the topics
@@ -299,7 +301,6 @@ stm_beta <- stm_10 |>
   slice_max(n = 20, order_by = value)
 ```
 
-
 ```{r}
 library(ggwordcloud)
 
@@ -313,7 +314,6 @@ wordcloud_df <- stm_beta |>
   mutate(value = 10*exp(value))
 ```
 
-
 ```{r}
 wordcloud_df %>%
   ggplot() + 
@@ -324,18 +324,26 @@ wordcloud_df %>%
   theme_bw()
 ```
 
+# Skills gap {data-icon="fa-search"}
 
-# Skills gap
+## Row {data-height="350"}
 
-```{r}
+### Skill gap
 
+```{r fig.width=9}
 bert_matching |> 
   left_join(isco_table, by = c("ISCO3Label" = "preferredLabel")) |> 
   mutate(code = str_sub(code, end = 3)) %>% 
   left_join(isco_table, by = c("code" = "code")) |> 
   count(preferredLabel) %>% 
-  mutate(percent = n/sum(n)) %>% left_join(
-unemployed_df %>% count(MajorStudy) %>% transmute(preferredLabel = MajorStudy, percent_unemp = n/sum(n))) %>% 
+  mutate(percent = n/sum(n)) %>% 
+  left_join(
+    unemployed_df %>% 
+      count(MajorStudy) %>% 
+      transmute(
+        preferredLabel = MajorStudy, 
+        percent_unemp = n/sum(n))
+  ) %>% 
   mutate(diff = percent-percent_unemp) %>%
   left_join(isco_table) %>% 
   filter(str_length(code) == 3) %>% 
@@ -343,27 +351,25 @@ unemployed_df %>% count(MajorStudy) %>% transmute(preferredLabel = MajorStudy, p
   arrange(diff) %>% 
   mutate(preferredLabel = fct_inorder(preferredLabel)) %>% 
   ggplot(aes(x = diff, fill = str_sub(code, end = 1), y = preferredLabel)) +
-  geom_col() +
+  geom_col(color = "black", size = .2) +
+  geom_vline(xintercept = 0, size = .6) +
   facet_wrap(~type, scales = "free", nrow = 1) +
-  theme(legend.position = "bottom", legend.direction = "horizontal",
-         # theme(
-    
-    axis.text.y = element_text(size = 7),
-    axis.title = element_text(size = 7),
-    legend.box = "vertical",
-    legend.key.height = unit(.2, "cm"),
-    legend.key.width = unit(2, "cm"),
-    legend.text = element_text(size = 6),
-    legend.title = element_text(size = 7),
-    strip.background = element_blank(),
-  strip.text.x = element_blank(),
-  strip.text.y = element_blank()
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal",
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6),
+        axis.title = element_text(size = 8),
+        legend.box = "vertical",
+        legend.key.height = unit(.2, "cm"),
+        legend.key.width = unit(1, "cm"),
+        legend.text = element_text(size = 6),
+        legend.title = element_text(size = 7),
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        strip.text.y = element_blank()
   ) +
   scale_x_continuous(labels = scales::percent) +
   scale_fill_manual(values = our_colors) +
-  theme_minimal() +
   labs(x = "Gap in percent", y = NULL, fill = "ISCO 1 Label")
-
-
 ```
-

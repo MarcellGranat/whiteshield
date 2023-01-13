@@ -74,6 +74,24 @@ our_colors <- c(
   ggsci::pal_jco()(10)[2],
   ggsci::pal_jco()(10)[-2]
 )
+
+slice_min_max <- function(df, order_by = value, n = 1) {
+  
+  order_by = enquo(order_by)
+  
+  min <- slice_min(df, !!order_by, n = n) %>%
+    mutate(type = "min")
+
+  max <- slice_max(df, !!order_by, n = n) %>%
+    mutate(type = "max")
+
+  df <- bind_rows(min, max) %>%
+    as_tibble()
+  
+  return(df)
+  
+}
+
 ```
 
 ```{r}
@@ -119,6 +137,7 @@ bert_matching |>
   ggplot(aes(area = n, fill = preferredLabel, label = str_wrap(preferredLabel, width = 20))) +
   geom_treemap(color = "black") +
   geom_treemap_text(grow = F, reflow = F, colour = "black") + 
+  ggsci::scale_fill_jco() +
   theme(
     legend.position = "none"
   )
@@ -132,11 +151,15 @@ bert_matching |>
   left_join(isco_table, by = c("ISCO3Label" = "preferredLabel")) |> 
   mutate(code = str_sub(code, end = 2)) |> 
   left_join(isco_table, by = c("code" = "code")) |> 
-  count(preferredLabel) |> 
-  mutate(preferredLabel = as.character(preferredLabel)) |> 
-  ggplot(aes(area = n, fill = preferredLabel, label = str_wrap(preferredLabel, width = 20))) +
+  count(preferredLabel) %>% 
+  left_join(isco_table) %>% 
+  mutate(preferredLabel = as.character(preferredLabel),
+         group = str_sub(code, end = 1)) |> 
+  filter(str_length(code) == 2, !is.na(code)) %>% 
+  ggplot(aes(area = n, fill = preferredLabel, subgroup = group, label = str_wrap(preferredLabel, width = 20))) +
   geom_treemap(color = "black") +
   geom_treemap_text(grow = F, reflow = F, colour = "black") + 
+  scale_fill_manual(values = rep(our_colors, 10)) +
   theme(
     legend.position = "none"
   )
@@ -149,11 +172,15 @@ bert_matching |>
   left_join(isco_table, by = c("ISCO3Label" = "preferredLabel")) |> 
   mutate(code = str_sub(code, end = 3)) |> 
   left_join(isco_table, by = c("code" = "code")) |> 
-  count(preferredLabel) |> 
-  mutate(preferredLabel = as.character(preferredLabel)) |> 
-  ggplot(aes(area = n, fill = preferredLabel, label = str_wrap(preferredLabel, width = 20))) +
+  count(preferredLabel) %>% 
+  left_join(isco_table) %>% 
+  mutate(preferredLabel = as.character(preferredLabel),
+         group = str_sub(code, end = 2)) |> 
+  filter(str_length(code) == 3, !is.na(code)) %>% 
+  ggplot(aes(area = n, fill = preferredLabel, subgroup = group, label = str_wrap(preferredLabel, width = 20))) +
   geom_treemap(color = "black") +
   geom_treemap_text(grow = F, reflow = F, colour = "black") + 
+  scale_fill_manual(values = rep(our_colors, 10)) +
   theme(
     legend.position = "none"
   )
@@ -296,3 +323,47 @@ wordcloud_df %>%
   facet_wrap(~ id) + 
   theme_bw()
 ```
+
+
+# Skills gap
+
+```{r}
+
+bert_matching |> 
+  left_join(isco_table, by = c("ISCO3Label" = "preferredLabel")) |> 
+  mutate(code = str_sub(code, end = 3)) %>% 
+  left_join(isco_table, by = c("code" = "code")) |> 
+  count(preferredLabel) %>% 
+  mutate(percent = n/sum(n)) %>% left_join(
+unemployed_df %>% count(MajorStudy) %>% transmute(preferredLabel = MajorStudy, percent_unemp = n/sum(n))) %>% 
+  mutate(diff = percent-percent_unemp) %>%
+  left_join(isco_table) %>% 
+  filter(str_length(code) == 3) %>% 
+  slice_min_max(order_by = diff, n = 10) %>% 
+  arrange(diff) %>% 
+  mutate(preferredLabel = fct_inorder(preferredLabel)) %>% 
+  ggplot(aes(x = diff, fill = str_sub(code, end = 1), y = preferredLabel)) +
+  geom_col() +
+  facet_wrap(~type, scales = "free", nrow = 1) +
+  theme(legend.position = "bottom", legend.direction = "horizontal",
+         # theme(
+    
+    axis.text.y = element_text(size = 7),
+    axis.title = element_text(size = 7),
+    legend.box = "vertical",
+    legend.key.height = unit(.2, "cm"),
+    legend.key.width = unit(2, "cm"),
+    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 7),
+    strip.background = element_blank(),
+  strip.text.x = element_blank(),
+  strip.text.y = element_blank()
+  ) +
+  scale_x_continuous(labels = scales::percent) +
+  scale_fill_manual(values = our_colors) +
+  theme_minimal() +
+  labs(x = "Gap in percent", y = NULL, fill = "ISCO 1 Label")
+
+
+```
+

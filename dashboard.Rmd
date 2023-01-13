@@ -1,0 +1,298 @@
+---
+title: "Whiteshield DataScience Competition"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    theme: bootstrap
+    logo: merged_logo.png
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include = FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(plotly)
+library(printr)
+
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+```{=html}
+<style>
+.navbar-logo img {
+position: absolute;
+right: 0px;
+width: 80px;
+}
+</style>
+```
+
+# Info {data-icon="fa-info-circle"}
+
+Row {data-height=350}
+-------------------------------------
+
+### What is this project?
+
+The dashboard presents our solution to the WhiteShield Data Science competition, which includes the analysis of the skills required for the given job post pool. Our solution involves two methods to explain the necessary skills:
+
+1. Counting the number of posts that were matched with a given ISCO level code. This means, that on 3 levels we can explore the number of job posts in the dataset
+
+2. A Structured Topic Model was fitted tot he corpus of the job descriptions, which resulted in 10 topics, with differing keywords that are present in our dataset. The topics occurence however differs from ISCO2 level job types, therefore it can be tracked which jobs require which type of keywords and skills. The words associated with the topics and the frequency of topic occurrence can be found in the third page
+
+Row {data-height=600}
+-------------------------------------
+
+### The authors
+
+```{r}
+knitr::include_graphics("avatars.png")
+```
+
+# Most researched majors
+
+## Most researched {.tabset}
+
+```{r}
+#| include: false
+
+knitr::opts_chunk$set(cache.lazy = FALSE, message = FALSE)
+
+source("utils.R")
+
+library(treemapify)
+library(janitor)
+library(tidytext)
+library(iscoCrosswalks)
+library(ggsci)
+
+our_colors <- c(
+  "#4A8179",
+  "#7F6EA8",
+  "#9B6E48",
+  ggsci::pal_jco()(10)[2],
+  ggsci::pal_jco()(10)[-2]
+)
+```
+
+```{r}
+#| label: import 
+
+job_post_translated <- pin_read(board, "job_post_translated")
+ilo_stat_df <- pin_read(board, "ilo_stat_df")
+unemployed_df <- pin_read(board, "unemployed_df")
+bert_merged <- pin_read(board, "bert_merged")
+bert_skills <- pin_read(board, "bert_skills")
+bert_matching <- pin_read(board, "BERT matching")
+```
+
+### ISCO 1
+
+```{r}
+isco_table <- iscoCrosswalks::isco
+
+isco_n <- bert_matching %>% 
+  group_by(ISCO3Label) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  slice_max(n, n = 16) %>% 
+  left_join(ilo_stat_df) %>% 
+  left_join(isco_table, by = c("ISCO2Code" = "code")) |> 
+  mutate(ISCO1Code = str_sub(ISCO2Code, end = 1)) |> 
+  left_join(
+    isco_table |> 
+      rename(
+        ISCO1Code = code, 
+        ISCO1Label = preferredLabel
+      )
+  )
+```
+
+```{r}
+bert_matching |> 
+  left_join(isco_table, by = c("ISCO3Label" = "preferredLabel")) |> 
+  mutate(code = str_sub(code, end = 1)) |> 
+  left_join(isco_table, by = c("code" = "code")) |> 
+  count(preferredLabel) |> 
+  mutate(preferredLabel = as.character(preferredLabel)) |> 
+  ggplot(aes(area = n, fill = preferredLabel, label = str_wrap(preferredLabel, width = 20))) +
+  geom_treemap(color = "black") +
+  geom_treemap_text(grow = F, reflow = F, colour = "black") + 
+  theme(
+    legend.position = "none"
+  )
+```
+
+
+### ISCO 2
+
+```{r}
+bert_matching |> 
+  left_join(isco_table, by = c("ISCO3Label" = "preferredLabel")) |> 
+  mutate(code = str_sub(code, end = 2)) |> 
+  left_join(isco_table, by = c("code" = "code")) |> 
+  count(preferredLabel) |> 
+  mutate(preferredLabel = as.character(preferredLabel)) |> 
+  ggplot(aes(area = n, fill = preferredLabel, label = str_wrap(preferredLabel, width = 20))) +
+  geom_treemap(color = "black") +
+  geom_treemap_text(grow = F, reflow = F, colour = "black") + 
+  theme(
+    legend.position = "none"
+  )
+```
+
+### ISCO 3
+
+```{r}
+bert_matching |> 
+  left_join(isco_table, by = c("ISCO3Label" = "preferredLabel")) |> 
+  mutate(code = str_sub(code, end = 3)) |> 
+  left_join(isco_table, by = c("code" = "code")) |> 
+  count(preferredLabel) |> 
+  mutate(preferredLabel = as.character(preferredLabel)) |> 
+  ggplot(aes(area = n, fill = preferredLabel, label = str_wrap(preferredLabel, width = 20))) +
+  geom_treemap(color = "black") +
+  geom_treemap_text(grow = F, reflow = F, colour = "black") + 
+  theme(
+    legend.position = "none"
+  )
+```
+
+# Structural Topic Model
+
+## Structural Topic Model {.tabset}
+
+
+### Topic extraction from the job post
+
+```{r}
+stm_effect_10 <- pin_read(board, "stm_effect_10")
+```
+
+```{r}
+isco2_label <- pin_read(board, "bert_merged") |> 
+  mutate(ilo_line = row_number(), .before = 1) |> 
+  pivot_longer(
+    - ilo_line, 
+    names_to = "job_post_line",
+    names_transform = as.numeric,
+    values_to = "similarity"
+  ) |> 
+  filter(similarity >= .5) |> # filter before merge
+  ungroup() |> 
+  left_join(ilo_stat_df |> 
+              mutate(ilo_line = row_number())) |> 
+  left_join(job_post_translated |> 
+              mutate(job_post_line = row_number())) |> 
+  select(ISCO3Code, job_post_line, JobDescription, similarity) |> 
+  group_by(job_post_line) |> 
+  slice_max(similarity, n = 1, with_ties = FALSE) |> 
+  ungroup() |> 
+  mutate(
+    code = str_sub(ISCO3Code, end = 2)
+  ) |> 
+  count(code) |> 
+  mutate(
+    p = n / sum(n),
+    p_label = str_c(n, " (",scales::percent(p, 1), ")")
+  )
+
+stm_effect_10 |> 
+  filter(term != "(Intercept)") |> 
+  mutate(
+    code = str_remove(term, "ISCO2Code"),
+  ) |> 
+  left_join(
+    iscoCrosswalks::isco
+  ) |> 
+  left_join(
+    isco2_label
+  ) |> 
+  mutate(
+    code_num = parse_number(code),
+    preferredLabel = fct_reorder(preferredLabel, code_num)
+  ) |> 
+  ggplot() +
+  aes(topic, preferredLabel, fill = estimate) +
+  geom_tile(color = "black") +
+  geom_text(aes(x = 12, y = preferredLabel, label = p_label, color = ""), size = 2) +
+  scale_x_continuous(breaks = 1:10) +
+  scale_color_manual(values = c("#4a8179")) +
+  guides(
+    color = guide_legend(
+      override.aes = aes(label = "4702 (2%)")
+    )
+  ) +
+  guides(
+    fill = guide_coloursteps(
+      ticks = TRUE,
+      ticks.colour = "black", 
+      frame.colour = "black"
+    )
+  ) + 
+  labs(
+    fill = "Estimated effect on topic prevalence",
+    y = "ISCO 2",
+    x = "Topic number",
+    color = "Number of identified jobs      "
+  ) + 
+  theme(
+    legend.position="bottom", 
+    axis.text.y = element_text(size = 7),
+    axis.title = element_text(size = 7),
+    legend.box = "vertical",
+    legend.key.height = unit(.2, "cm"),
+    legend.key.width = unit(2, "cm"),
+    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 7),
+  ) + 
+  xlim(c(1, 13))
+```
+
+### Words in the topics
+
+```{r}
+stm_10 <- pin_read(board, "stm_10")
+```
+
+```{r}
+stm_beta <- stm_10 |> 
+  pluck(1) |> 
+  pluck("beta") |> 
+  pluck("logbeta") |>  
+  as.data.frame() %>% 
+  tibble() %>% 
+  set_names(
+    stm_10[[1]]$vocab
+  ) %>% 
+  mutate(id = row_number()) %>% 
+  pivot_longer(-id) %>% 
+  group_by(id) %>% 
+  slice_max(n = 20, order_by = value)
+```
+
+
+```{r}
+library(ggwordcloud)
+
+wordcloud_df <- stm_beta |> 
+  ungroup() %>% 
+  filter(
+    !id %in% c(2,5),
+    !(name %in% c("description", "applicant", "job", "company", "saudi", "must", "conditions", "nationality")),
+    !str_detect(name, "\\.")
+  ) %>% 
+  mutate(value = 10*exp(value))
+```
+
+
+```{r}
+wordcloud_df %>%
+  ggplot() + 
+  geom_text_wordcloud_area(aes(label = name, size = value, color = as.character(id)), size = 2) +
+  scale_size_area(max_size = 15) + 
+  scale_color_jco() +
+  facet_wrap(~ id) + 
+  theme_bw()
+```

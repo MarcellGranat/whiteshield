@@ -15,5 +15,7 @@
 !09-skill-order.R
 !11-recommendation.R
 !12-filter-recommendation.R
+!dashboard.rmd
+!sau_adm_gadm_20210525_shp.*
 !stm.R
 .Rproj.user
